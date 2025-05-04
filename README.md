@@ -13,3 +13,4 @@ It is very similar to FastAPI and Django.
 - Supports global and local middlewares
 - Supports function-based and class-based routing
 - Dynamic URL parameters and query parameters
+- Hot reloading (using hupper)
