@@ -1,5 +1,8 @@
+import inspect
 from response import Response
 from parse import parse
+
+SUPPORTED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
 
 
 class PyApi:
@@ -17,42 +20,65 @@ class PyApi:
             else:
                 raise TypeError("Middleware must be callable")
 
-        for path, handler_dict in self.routes.items():
-            res = parse(path, environ["PATH_INFO"])
-            for request_method, handler in handler_dict.items():
-                if res and environ["REQUEST_METHOD"] == request_method:
-                    middleware_list = self.route_middlewares[path][request_method]
+        requested_path = environ["PATH_INFO"]
+        request_method = environ["REQUEST_METHOD"]
+
+        for path, handler_info in self.routes.items():
+            res = parse(path, requested_path)
+            if res:  # Check if the path pattern matches
+                # Check if it's a function-based route
+                if request_method in handler_info:
+                    handler = handler_info[request_method]["handler"]
+                    middleware_list = handler_info[request_method]["middlewares"]
+
                     for middleware in middleware_list:
                         if callable(middleware):
                             middleware(environ)
                         else:
                             raise TypeError("Middleware must be callable")
-                    handler(environ, response, **res.named)
 
+                    handler(environ, response, **res.named)
+                    return response.as_wsgi(start_response)
+
+                # Check if it's a class-based route (registered with @route)
+                elif "CLASS_BASED" in handler_info:
+                    handler_class = handler_info["CLASS_BASED"]["handler"]
+                    middleware_list = handler_info["CLASS_BASED"]["middlewares"]
+
+                    for middleware in middleware_list:
+                        if callable(middleware):
+                            middleware(environ)
+                        else:
+                            raise TypeError("Middleware must be callable")
+
+                    # Create an instance of the class
+                    instance = handler_class()
+                    # Get the appropriate method based on the request method
+                    method = getattr(instance, request_method.lower(), None)
+
+                    if method and callable(method):
+                        method(environ, response, **res.named)
+                        return response.as_wsgi(start_response)
+                    else:
+                        # Method not found on the class for this request method
+                        response = Response(
+                            status_code="405 Method Not Allowed",
+                            text="Method Not Allowed",
+                        )
+                        return response.as_wsgi(start_response)
+
+        # If no path matches, return the initial 404 response
         return response.as_wsgi(start_response)
 
     def __map_route_to_handler(self, path, request_method, handler, middlewares):
-        # {
-        #     '/hello': {
-        #         'GET': handler
-        #     }
-        # }
         path_name = path if path else f"/{handler.__name__}"
         if path_name not in self.routes:
             self.routes[path_name] = dict()
 
-        self.routes[path_name][request_method] = handler
-
-        # {
-        #     '/hello': {
-        #         'GET': [middleware1, middleware2]
-        #     }
-        # }
-
-        if path_name not in self.route_middlewares:
-            self.route_middlewares[path_name] = dict()
-
-        self.route_middlewares[path_name][request_method] = middlewares
+        self.routes[path_name][request_method] = {
+            "handler": handler,
+            "middlewares": middlewares,
+        }
 
         return handler
 
@@ -86,5 +112,17 @@ class PyApi:
 
         return wrapper
 
+    def route(self, path=None, middlewares=[]):
+        def wrapper(handler_class):
+            if isinstance(handler_class, type):
+                self.__map_route_to_handler(
+                    path
+                    or f"/{handler_class.__name__.lower()}",  # Use lowercase for class route paths
+                    "CLASS_BASED",
+                    handler_class,
+                    middlewares,
+                )
+            else:
+                raise ValueError("@route can only be used for classes")
 
-pyapi = PyApi()
+        return wrapper
