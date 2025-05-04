@@ -1,5 +1,6 @@
 import inspect
 from response import Response
+from request import Request
 from parse import parse
 
 SUPPORTED_METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"]
@@ -13,15 +14,16 @@ class PyApi:
 
     def __call__(self, environ, start_response):
         response = Response(status_code="404 Not Found", text="Not Found")
+        request = Request(environ)
 
         for middleware in self.middlewares:
             if callable(middleware):
-                middleware(environ)
+                middleware(request)
             else:
                 raise TypeError("Middleware must be callable")
 
-        requested_path = environ["PATH_INFO"]
-        request_method = environ["REQUEST_METHOD"]
+        requested_path = request.path_info
+        request_method = request.request_method.upper()
 
         for path, handler_info in self.routes.items():
             res = parse(path, requested_path)
@@ -33,11 +35,11 @@ class PyApi:
 
                     for middleware in middleware_list:
                         if callable(middleware):
-                            middleware(environ)
+                            middleware(request)
                         else:
                             raise TypeError("Middleware must be callable")
 
-                    handler(environ, response, **res.named)
+                    handler(request, response, **res.named)
                     return response.as_wsgi(start_response)
 
                 # Check if it's a class-based route (registered with @route)
@@ -47,7 +49,7 @@ class PyApi:
 
                     for middleware in middleware_list:
                         if callable(middleware):
-                            middleware(environ)
+                            middleware(request)
                         else:
                             raise TypeError("Middleware must be callable")
 
@@ -57,7 +59,7 @@ class PyApi:
                     method = getattr(instance, request_method.lower(), None)
 
                     if method and callable(method):
-                        method(environ, response, **res.named)
+                        method(request, response, **res.named)
                         return response.as_wsgi(start_response)
                     else:
                         # Method not found on the class for this request method

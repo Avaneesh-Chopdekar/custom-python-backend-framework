@@ -3,7 +3,7 @@ from main import PyApi
 
 
 def logger_middleware(request):
-    print(f'[{datetime.now()}] {request['REQUEST_METHOD']} {request["PATH_INFO"]}')
+    print(f"[{datetime.now()}] {request.request_method} {request.path_info}")
 
 
 def local_middleware(request):
@@ -15,7 +15,7 @@ pyapi = PyApi(middlewares=[logger_middleware])
 
 @pyapi.get("/hello/{id}", middlewares=[local_middleware])
 def hello(request, response, id):
-    response.send(f"Hello {id}")
+    response.send(f"Hello {request.queries.get("name")} with id {id}")
 
 
 @pyapi.post("/users")
