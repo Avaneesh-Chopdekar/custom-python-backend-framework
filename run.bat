@@ -1,1 +1,1 @@
-hupper -m waitress main:pyapi
+hupper -m waitress example:pyapi
