@@ -6,6 +6,9 @@ pyapi = PyApi()
 
 @pyapi.get("/hello")
 def hello(request, response):
-    response["status_code"] = "200 OK"
-    response["headers"] = [("Content-Type", "text/plain")]
-    response["text"] = "Hello, World!"
+    response.send("Hello World")
+
+
+@pyapi.post("/users")
+def create_user(request, response):
+    response.send("User Created", status_code="201 Created")

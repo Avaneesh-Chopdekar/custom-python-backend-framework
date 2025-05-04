@@ -1,9 +1,12 @@
+from response import Response
+
+
 class PyApi:
     def __init__(self):
         self.routes = dict()
 
     def __call__(self, environ, start_response):
-        response = {}
+        response = Response(status_code="404 Not Found", text="Not Found")
         for path, handler_dict in self.routes.items():
             for request_method, handler in handler_dict.items():
                 if (
@@ -11,30 +14,50 @@ class PyApi:
                     and environ["REQUEST_METHOD"] == request_method
                 ):
                     handler(environ, response)
-                    start_response(response["status_code"], response["headers"])
-                    return [(response["text"]).encode()]
 
-        status_code = "404 Not Found"
-        headers = [("Content-Type", "text/plain")]
-        body = b"Not Found"
+        response.as_wsgi(start_response)
+        return [(response.text).encode()]
 
-        start_response(status_code, headers)
-        return [body]
+    def __map_route_to_handler(self, path, request_method, handler):
+        # {
+        #     '/hello': {
+        #         'GET': handler
+        #     }
+        # }
+        path_name = path if path else f"/{handler.__name__}"
+        if path_name not in self.routes:
+            self.routes[path_name] = dict()
+
+        self.routes[path_name][request_method] = handler
+        return handler
 
     def get(self, path=None):
         def wrapper(handler):
-            # {
-            #     '/hello': {
-            #         'GET': handler
-            #     }
-            # }
-            path_name = path if path else f"/{handler.__name__}"
-            if path_name not in self.routes:
-                self.routes[path_name] = dict()
+            return self.__map_route_to_handler(path, "GET", handler)
 
-            self.routes[path_name]["GET"] = handler
+        return wrapper
 
-            # print(self.routes)
+    def post(self, path=None):
+        def wrapper(handler):
+            return self.__map_route_to_handler(path, "POST", handler)
+
+        return wrapper
+
+    def put(self, path=None):
+        def wrapper(handler):
+            return self.__map_route_to_handler(path, "PUT", handler)
+
+        return wrapper
+
+    def patch(self, path=None):
+        def wrapper(handler):
+            return self.__map_route_to_handler(path, "PATCH", handler)
+
+        return wrapper
+
+    def delete(self, path=None):
+        def wrapper(handler):
+            return self.__map_route_to_handler(path, "DELETE", handler)
 
         return wrapper
 
