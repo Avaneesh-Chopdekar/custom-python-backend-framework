@@ -15,7 +15,14 @@ pyapi = PyApi(middlewares=[logger_middleware])
 
 @pyapi.get("/hello/{id}", middlewares=[local_middleware])
 def hello(request, response, id):
-    response.send(f"Hello {request.queries.get("name")} with id {id}")
+    response.render(
+        "example",
+        {
+            "id": id,
+            "name": request.queries.get("name", "World"),
+            "message": "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
+        },
+    )
 
 
 @pyapi.post("/users")
