@@ -1,3 +1,6 @@
+import json
+
+
 class Response:
     def __init__(self, status_code, text):
         self.status_code = status_code
@@ -11,6 +14,10 @@ class Response:
     def send(self, text="", status_code="200 OK"):
         if isinstance(text, str):
             self.text = text
+        elif isinstance(text, list):
+            self.text = json.dumps(text)
+        elif isinstance(text, dict):
+            self.text = json.dumps(text)
         else:
             self.text = str(text)
 

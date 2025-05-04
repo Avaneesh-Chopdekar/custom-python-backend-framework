@@ -29,7 +29,8 @@ class Book:
         pass
 
     def get(self, request, response):
-        response.send("List of books")
+        response.send([{"id": 1, "title": "Book 1"}, {"id": 2, "title": "Book 2"}])
+        response.headers.append(("Content-Type", "application/json"))
 
     def post(self, request, response):
         response.send("Book created", status_code="201 Created")
