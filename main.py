@@ -1,4 +1,5 @@
 from response import Response
+from parse import parse
 
 
 class PyApi:
@@ -8,15 +9,12 @@ class PyApi:
     def __call__(self, environ, start_response):
         response = Response(status_code="404 Not Found", text="Not Found")
         for path, handler_dict in self.routes.items():
+            res = parse(path, environ["PATH_INFO"])
             for request_method, handler in handler_dict.items():
-                if (
-                    environ["PATH_INFO"] == path
-                    and environ["REQUEST_METHOD"] == request_method
-                ):
-                    handler(environ, response)
+                if res and environ["REQUEST_METHOD"] == request_method:
+                    handler(environ, response, **res.named)
 
-        response.as_wsgi(start_response)
-        return [(response.text).encode()]
+        return response.as_wsgi(start_response)
 
     def __map_route_to_handler(self, path, request_method, handler):
         # {

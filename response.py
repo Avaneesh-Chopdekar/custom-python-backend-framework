@@ -6,6 +6,7 @@ class Response:
 
     def as_wsgi(self, start_response):
         start_response(self.status_code, self.headers)
+        return [(self.text).encode()]
 
     def send(self, text="", status_code="200 OK"):
         if isinstance(text, str):

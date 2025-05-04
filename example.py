@@ -4,9 +4,9 @@ from main import PyApi
 pyapi = PyApi()
 
 
-@pyapi.get("/hello")
-def hello(request, response):
-    response.send("Hello World")
+@pyapi.get("/hello/{id}")
+def hello(request, response, id):
+    response.send(f"Hello {id}")
 
 
 @pyapi.post("/users")
